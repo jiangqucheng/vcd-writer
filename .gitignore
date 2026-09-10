@@ -32,3 +32,4 @@
 *.app
 
 test/vcd_writer_tester
+*.vcd

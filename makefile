@@ -6,17 +6,17 @@ LIBS = lib/libvcd_writer.so
 TARGETS=$(OBJS) $(OBJS_TEST) $(EXES) $(LIBS)
 
 INCLUDES = -I include
-CXXFLAGS = -std=c++11 -Wall -fPIC $(INCLUDES)
+CXXFLAGS = -Wall -Wextra -Werror -fPIC $(INCLUDES)
 
 .PHONY: all clean
 all: $(TARGETS)
 
 lib/libvcd_writer.so: $(OBJS)
-	mkdir -p lib
+	@mkdir -p lib
 	$(CXX) -shared -o $@ $^
 
 test/vcd_writer_tester: $(OBJS) $(OBJS_TEST)
-	mkdir -p test
+	@mkdir -p test
 	$(CXX) -o $@ $^
 
 clean:

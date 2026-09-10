@@ -193,15 +193,16 @@ struct VarSearch
 
 // -----------------------------
 VCDWriter::VCDWriter(const std::string &filename, HeadPtr &header, unsigned init_timestamp) :
-    _filename(filename),
+    _ofile(nullptr),
     _timestamp(init_timestamp),
     _header((header) ? std::move(header) : makeVCDHeader()),
-    _registering(true),
-    _closed(false),
-    _dumping(true),
-    _next_var_id(0),
+    _filename(filename),
     _scope_sep("."),
     _scope_def_type(ScopeType::module),
+    _closed(false),
+    _dumping(true),
+    _registering(true),
+    _next_var_id(0),
     _search(std::make_shared<VarSearch>(_scope_def_type))
 {
     if (!_header)
@@ -387,7 +388,7 @@ void VCDWriter::_dump_off(TimeStamp timestamp)
 // -----------------------------
 void VCDWriter::_dump_values(const std::string &keyword)
 {
-    fprintf(_ofile, (keyword + "\n").c_str());
+    fprintf(_ofile, "%s\n", keyword.c_str());
     // TODO : events should be excluded
     for (const auto &p : _vars_prevs)
     {
@@ -411,7 +412,7 @@ void VCDWriter::_scope_declaration(const std::string &scope, size_t sub_beg, siz
 // -----------------------------
 void VCDWriter::_write_header()
 {
-    for (int i = 0; i < VCDHeader::kws; ++i)
+    for (unsigned i = 0; i < VCDHeader::kws; ++i)
     {
         auto kwname = VCDHeader::kw_names[i];
         auto kwvalue = _header->kw_values[i];
@@ -506,7 +507,7 @@ void VCDWriter::_finalize_registration()
 
 // -----------------------------
 VCDVariable::VCDVariable(const std::string &name, VariableType type, unsigned size, ScopePtr scope, unsigned next_var_id) :
-    _name(name), _type(type), _size(size), _scope(scope)
+    _type(type), _name(name), _size(size), _scope(scope)
 {
     std::stringstream ss;
     ss << std::hex << next_var_id;
