@@ -302,7 +302,7 @@ bool VCDWriter::_change(VarPtr var, TimeStamp timestamp, const VarValue &value, 
         if (_registering)
             _finalize_registration();
         if (_dumping)
-            fprintf(_ofile, "#%d\n", timestamp);
+            fprintf(_ofile, "#%ld\n", timestamp);
         _timestamp = timestamp;
     }
 
@@ -366,7 +366,7 @@ void VCDWriter::set_scope_type(std::string &scope, ScopeType scope_type)
 // -----------------------------
 void VCDWriter::_dump_off(TimeStamp timestamp)
 {
-    fprintf(_ofile, "#%d\n", timestamp);
+    fprintf(_ofile, "#%ld\n", timestamp);
     fprintf(_ofile, "$dumpoff\n");
     for (const auto &p : _vars_prevs)
     {
@@ -497,7 +497,7 @@ void VCDWriter::_finalize_registration()
     _write_header();
     if (_vars_prevs.size())
     {
-        fprintf(_ofile, "#%d\n", _timestamp);
+        fprintf(_ofile, "#%ld\n", _timestamp);
         _dump_values("$dumpvars");
         if (!_dumping)
             _dump_off(_timestamp);
