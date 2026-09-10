@@ -1,18 +1,26 @@
 
-TOP_DIR=..
-sinclude $(TOP_DIR)/make.config.mak
+OBJS = $(patsubst %.cpp,%.o,$(wildcard src/*.cpp))
+OBJS_TEST = $(patsubst %.cpp,%.o,$(wildcard test/*.cpp))
+EXES = test/vcd_writer_tester
+LIBS = lib/libvcd_writer.so
+TARGETS=$(OBJS) $(OBJS_TEST) $(EXES) $(LIBS)
 
-EXES = $(BIN_DIR)/vcd_writer 
-LIBS = $(BIN_DIR)/libvcd_writer.so
-TARGETS=$(OBJS) $(EXES) $(LIBS)
+INCLUDES = -I include
+CXXFLAGS = -std=c++11 -Wall -fPIC $(INCLUDES)
 
-USING_OPTIMIZE= 
-# CXX_FLAGS+= --gpu-architecture=compute_37 --gpu-code=sm_37 
-# need these flag to compile shared lib.
-CXX_FLAGS+= -shared-libgcc -fPIC   
-LINK_FLAGS=$(CXX_FLAGS) 
+.PHONY: all clean
+all: $(TARGETS)
 
-sinclude $(TOP_DIR)/make.func.mak
+lib/libvcd_writer.so: $(OBJS)
+	mkdir -p lib
+	$(CXX) -shared -o $@ $^
 
-.PHONY += BEFORE_ANY
+test/vcd_writer_tester: $(OBJS) $(OBJS_TEST)
+	mkdir -p test
+	$(CXX) -o $@ $^
 
+clean:
+	rm -f $(TARGETS)
+	rm -f test/vcd_writer_tester
+	rm -f lib/libvcd_writer.so 
+	rm -rf lib bin
