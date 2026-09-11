@@ -89,7 +89,9 @@ protected:
     VariableType _type;  // VCD variable type, one of `VariableTypes`
     std::string  _name;  // human-readable name
     unsigned     _size;  // size of variable, in bits
-    ScopePtr    _scope;  // pointer to scope string
+    std::string _scope_name;  // name of owning scope, stored by value:
+                              // a ScopePtr here would close a reference cycle
+                              // (VCDScope::vars already owns its variables)
 
     //! string representation of variable types
     static const std::string VAR_TYPES[];
@@ -115,13 +117,13 @@ const std::string VCDVariable::VAR_TYPES[] = {
 size_t VarPtrHash::operator()(const VarPtr &p) const
 {
     std::hash<std::string> h;
-    return (h(p->_name) ^ (h(p->_scope->name) << 1));
+    return (h(p->_name) ^ (h(p->_scope_name) << 1));
 }
 
 // -----------------------------
 bool VarPtrEqual::operator()(const VarPtr &a, const VarPtr &b) const
 {
-    return (a->_name == b->_name) && (a->_scope->name == b->_scope->name);
+    return (a->_name == b->_name) && (a->_scope_name == b->_scope_name);
 }
 
 // -----------------------------
@@ -344,7 +346,7 @@ VarPtr VCDWriter::var(const std::string &scope, const std::string &name) const
     //    throw VCDPhaseException{ format("Such scope '%s' does not exist", scope.c_str()) };
     //VarPtr pvar = std::make_shared<VCDScalarVariable>(name, VCDWriter::var_def_type, 0, *it_scope, 0);
     //auto it_var = _vars.find(pvar);
-    _search->vcd_scope.name = scope;
+    _search->vcd_var._scope_name = scope;
     _search->vcd_var._name = name;
     auto it_var = _vars.find(_search->ptr_var);
     if (it_var == _vars.end())
@@ -507,7 +509,8 @@ void VCDWriter::_finalize_registration()
 
 // -----------------------------
 VCDVariable::VCDVariable(const std::string &name, VariableType type, unsigned size, ScopePtr scope, unsigned next_var_id) :
-    _type(type), _name(name), _size(size), _scope(scope)
+    _type(type), _name(name), _size(size),
+    _scope_name(scope ? scope->name : std::string())
 {
     std::stringstream ss;
     ss << std::hex << next_var_id;
