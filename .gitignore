@@ -44,3 +44,7 @@ CMakeFiles/
 cmake_install.cmake
 CTestTestfile.cmake
 Testing/
+
+# Build output directories (make)
+/lib/
+/obj/

@@ -16,52 +16,85 @@ else()
     set(VCDWRITER_IS_TOP_LEVEL OFF)
 endif()
 
+option(VCDWRITER_BUILD_STATIC "Build the static library" ON)
+option(VCDWRITER_BUILD_SHARED "Build the shared library" ON)
 option(VCDWRITER_BUILD_TESTER
        "Build test/vcd_writer_tester" ${VCDWRITER_IS_TOP_LEVEL})
 option(VCDWRITER_WARNINGS_AS_ERRORS
        "Treat compiler warnings as errors" OFF)
 
-# ------------------------------------------------------------------
-# The library
-#
-# STATIC by default; configure with -DBUILD_SHARED_LIBS=ON for a .so.
-# Static avoids having to deal with rpath / LD_LIBRARY_PATH downstream.
-# ------------------------------------------------------------------
-add_library(vcdwriter
+if(NOT VCDWRITER_BUILD_STATIC AND NOT VCDWRITER_BUILD_SHARED)
+    message(FATAL_ERROR
+        "Both VCDWRITER_BUILD_STATIC and VCDWRITER_BUILD_SHARED are OFF; "
+        "there would be nothing to build.")
+endif()
+
+set(VCDWRITER_SOURCES
     src/vcd_writer.cpp
     src/vcd_utils.cpp
 )
-add_library(vcdwriter::vcdwriter ALIAS vcdwriter)
 
-# PUBLIC: anything linking vcdwriter gets include/ on its search path
-# automatically, so the parent never hardcodes -I paths.
-target_include_directories(vcdwriter PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
+# ------------------------------------------------------------------
+# The libraries
+#
+# Both flavours are built by default and share one output name, so the
+# results are libvcdwriter.a and libvcdwriter.so.1.0.0 side by side.
+# ------------------------------------------------------------------
+set(VCDWRITER_TARGETS "")
 
-# PUBLIC because vcd_writer.h itself needs C++11; consumers are bumped
-# up to at least 11 but are free to compile at a newer standard.
-target_compile_features(vcdwriter PUBLIC cxx_std_11)
+if(VCDWRITER_BUILD_STATIC)
+    add_library(vcdwriter_static STATIC ${VCDWRITER_SOURCES})
+    add_library(vcdwriter::vcdwriter_static ALIAS vcdwriter_static)
+    list(APPEND VCDWRITER_TARGETS vcdwriter_static)
+endif()
 
-# Keeps the objects linkable into a shared library downstream.
-set_target_properties(vcdwriter PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    SOVERSION ${PROJECT_VERSION_MAJOR}
-    VERSION   ${PROJECT_VERSION}
-)
-
-# PRIVATE: our warning settings are ours, not inflicted on the parent.
-target_compile_options(vcdwriter PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-)
-
-if(VCDWRITER_WARNINGS_AS_ERRORS)
-    target_compile_options(vcdwriter PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Werror>
-        $<$<CXX_COMPILER_ID:MSVC>:/WX>
+if(VCDWRITER_BUILD_SHARED)
+    add_library(vcdwriter_shared SHARED ${VCDWRITER_SOURCES})
+    add_library(vcdwriter::vcdwriter_shared ALIAS vcdwriter_shared)
+    set_target_properties(vcdwriter_shared PROPERTIES
+        SOVERSION ${PROJECT_VERSION_MAJOR}
+        VERSION   ${PROJECT_VERSION}
     )
+    list(APPEND VCDWRITER_TARGETS vcdwriter_shared)
+endif()
+
+foreach(vcdwriter_target IN LISTS VCDWRITER_TARGETS)
+    set_target_properties(${vcdwriter_target} PROPERTIES
+        OUTPUT_NAME vcdwriter
+        POSITION_INDEPENDENT_CODE ON
+    )
+
+    # PUBLIC: anything linking us gets include/ on its search path
+    # automatically, so the parent never hardcodes -I paths.
+    target_include_directories(${vcdwriter_target} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+
+    # PUBLIC because vcd_writer.h itself needs C++11. This is a minimum,
+    # not a pin: consumers are free to compile at a newer standard.
+    target_compile_features(${vcdwriter_target} PUBLIC cxx_std_11)
+
+    # PRIVATE: our warning settings are ours, not inflicted on the parent.
+    target_compile_options(${vcdwriter_target} PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra>
+        $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    )
+
+    if(VCDWRITER_WARNINGS_AS_ERRORS)
+        target_compile_options(${vcdwriter_target} PRIVATE
+            $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Werror>
+            $<$<CXX_COMPILER_ID:MSVC>:/WX>
+        )
+    endif()
+endforeach()
+
+# Default target for consumers that do not care which flavour they get.
+# Static is preferred: it needs no rpath handling downstream.
+if(VCDWRITER_BUILD_STATIC)
+    add_library(vcdwriter::vcdwriter ALIAS vcdwriter_static)
+else()
+    add_library(vcdwriter::vcdwriter ALIAS vcdwriter_shared)
 endif()
 
 # ------------------------------------------------------------------
@@ -71,7 +104,7 @@ if(VCDWRITER_BUILD_TESTER)
     enable_testing()
 
     add_executable(vcd_writer_tester test/vcd_writer_tester.cpp)
-    target_link_libraries(vcd_writer_tester PRIVATE vcdwriter)
+    target_link_libraries(vcd_writer_tester PRIVATE vcdwriter::vcdwriter)
 
     # The tester writes dump.vcd into its working directory.
     add_test(NAME vcd_writer_tester
