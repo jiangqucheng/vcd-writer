@@ -39,7 +39,7 @@ enum class TimeScaleUnit : char
 enum VCDValues : char
 { ONE='1', ZERO='0', UNDEF='x', HIGHV='z' };
 
-using TimeStamp = unsigned;
+using TimeStamp = uint64_t;
 using VarValue = std::string;
 
 // -----------------------------
@@ -164,7 +164,7 @@ public:
     void dump_on(TimeStamp current)
     {
         if (!_dumping && !_registering && _vars_prevs.size())
-            fprintf(_ofile, "#%d", current);
+            fprintf(_ofile, "#%ld", current);
         _dump_values("$dumpon");
         _dumping = true;
     }
@@ -179,7 +179,7 @@ public:
         if (_registering)
             _finalize_registration();
         if (current != NULL && *current > _timestamp)
-            fprintf(_ofile, "#%d", *current);
+            fprintf(_ofile, "#%ld", *current);
         fflush(_ofile);
     }
     // Close VCD writer. Any buffered VCD data is flushed to the output file.

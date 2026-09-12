@@ -33,3 +33,18 @@
 
 test/vcd_writer_tester
 *.vcd
+
+# CMake build directories (out-of-source)
+/build*/
+/cmake-build-*/
+
+# CMake leftovers from an accidental in-source configure
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# Build output directories (make)
+/lib/
+/obj/
